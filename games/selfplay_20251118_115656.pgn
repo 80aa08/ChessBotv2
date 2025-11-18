@@ -1,0 +1,9 @@
+[Event "Self-Play Training"]
+[Site "?"]
+[Date "2025.11.18"]
+[Round "2"]
+[White "ChessBot"]
+[Black "ChessBot"]
+[Result "1-0"]
+
+1. g3 d5 2. f3 Nd7 3. Nc3 Nb8 4. b3 a5 5. Bh3 Bf5 6. Bxf5 a4 7. Nxa4 b6 8. a3 Qc8 9. Nxb6 Kd8 10. Bh3 Nh6 11. b4 Rxa3 12. Nd7 Rxf3 13. exf3 c6 14. Ra7 Ke8 15. Ra8 Ng8 16. Rxb8 Qxb8 17. Be6 Qc8 18. Ne5 Qd8 19. Qe2 Qb6 20. Qd3 Qb5 21. Qxb5 f6 22. Qb8# 1-0

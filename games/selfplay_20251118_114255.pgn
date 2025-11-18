@@ -1,0 +1,9 @@
+[Event "Self-Play Training"]
+[Site "?"]
+[Date "2025.11.18"]
+[Round "1"]
+[White "ChessBot"]
+[Black "ChessBot"]
+[Result "0-1"]
+
+1. d3 a6 2. e4 f5 3. e5 e6 4. Bf4 Nc6 5. Bh6 Nb4 6. a3 d6 7. Bg5 Qe7 8. Kd2 Qf7 9. Nf3 Nh6 10. Ne1 Qd7 11. h4 Nd5 12. Qf3 f4 13. Qh3 Ng4 14. Kd1 Qa4 15. Qe3 Qxa3 16. Be7 Bd7 17. Rg1 Qa5 18. Qh3 Nge3+ 19. fxe3 b5 20. c3 Qa2 21. Bf6 Qxa1 22. c4 gxf6 23. Nf3 Bh6 24. Ng5 O-O 25. Qg3 Kg7 26. exf6+ Kxf6 27. Qh3 Ke7 28. cxd5 Ra7 29. g4 fxe3 30. Rg2 Kd8 31. Rg1 Ke7 32. Rg2 Kd8 33. Nf3 Ke7 34. Rh2 Kf7 35. h5 Kf6 36. Qg3 Re8 37. Qe5+ dxe5 38. g5+ Kg7 39. Nd2 Rd8 40. dxe6 Rh8 41. Ne4 Re8 42. Ke1 Rb8 43. Nf6 Bc6 44. b4 a5 45. Rc2 Kf8 46. Ne8 Rbb7 47. e7+ Kxe8 48. bxa5 Bf3 49. Ra2 Qxb1# 0-1

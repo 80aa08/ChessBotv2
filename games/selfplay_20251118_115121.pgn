@@ -1,0 +1,9 @@
+[Event "Self-Play Training"]
+[Site "?"]
+[Date "2025.11.18"]
+[Round "2"]
+[White "ChessBot"]
+[Black "ChessBot"]
+[Result "*"]
+
+1. e3 Nc6 2. Ne2 f6 3. f3 Nb4 4. f4 Nh6 5. Kf2 Nxa2 6. Nec3 Nf5 7. Bd3 Nd6 8. f5 Rb8 9. Kg1 c6 10. Qe1 Nb4 11. Nd5 b5 12. g3 Kf7 13. Kf2 Ne8 14. Kg1 h5 15. Nf4 Rh6 16. Kg2 h4 17. Ra6 d6 18. Kh3 Rh5 19. Ne2 hxg3+ 20. Kxg3 c5 21. Nf4 Qd7 22. Ra4 Rxf5 23. Ra3 Rg5+ 24. Kf3 Rb7 25. Nd5 e5 26. Bf5 Qe7 27. Nb6 Rg4 28. Rc3 Rc7 29. Rc4 Qd7 30. d3 Na2 31. b4 d5 32. Na3 Nc3 33. Qg3 Qxf5+ 34. Rf4 Qg5 35. Qh4 f5 36. Qh5+ Ke7 37. Rd4 exd4 38. Rg1 Qf4+ 39. exf4 cxb4 40. Bb2 Rc4 41. Nb1 Rh4 42. Rd1 Nxb1 43. Qxh4+ Kf7 44. Qe1 Kg6 45. Kg2 Be6 46. Qf2 Kh6 47. Rxb1 Rc7 48. Rd1 Rc4 49. Ba3 Rc3 50. Qd2 Kh7 51. Rf1 Rc5 52. Re1 Kh6 53. c3 b3 54. Qe3 Rc7 55. Be7 dxe3 56. Bd8 Rc8 57. d4 axb6 58. c4 dxc4 59. Be7 Rd8 60. Rxe3 Bd7 61. Rxb3 Be6 62. Rb4 Bd5+ 63. Kf2 Rb8 64. Kg1 Bf3 65. Rb1 Rb7 66. Rd1 Rd7 67. Bd8 Rd6 68. Bh4 Bh5 69. Bf2 c3 70. Rc1 Bg6 71. Be1 Rxd4 72. Bd2 Re4 73. Rf1 Bh7 74. Re1 Bg8 75. Rf1 Be6 76. Kg2 Kh7 77. Bxc3 Kg8 78. Re1 Ba2 79. Kh1 g6 80. Rxe4 Kf7 81. Kg2 Bd5 82. h3 Bc6 83. h4 Nc7 84. Ba1 Bxe4+ 85. Kg3 Bc6 86. Bg7 Ke7 87. Kf2 Bb7 88. Ba1 Ne8 89. Kg1 Ba8 90. h5 Bh6 91. Bf6+ Kd6 92. Kf2 Kc7 93. Kg1 Bh1 94. Bc3 Kc8 95. Kf2 Kd8 96. Ba1 Bf3 97. Kg1 Bc6 98. Bg7 Nd6 99. Ba1 Bg2 100. Bf6+ Kc8 *

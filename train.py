@@ -1,0 +1,270 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
+from torch.utils.tensorboard import SummaryWriter
+import os
+import numpy as np
+from tqdm import tqdm
+import chess
+
+from config import Config
+from model import ChessNet
+from chess_env import ChessEnv
+from mcts import MCTS
+from utils import (
+    save_pgn,
+    ReplayBuffer,
+    get_policy_from_visits,
+    temperature_sample
+)
+
+
+class ChessDataset(Dataset):
+    def __init__(self, examples):
+        self.examples = examples
+
+    def __len__(self):
+        return len(self.examples)
+
+    def __getitem__(self, idx):
+        state, policy, value = self.examples[idx]
+
+        if not isinstance(state, torch.Tensor):
+            state = torch.tensor(state, dtype=torch.float32)
+        if not isinstance(policy, torch.Tensor):
+            policy = torch.tensor(policy, dtype=torch.float32)
+        if not isinstance(value, torch.Tensor):
+            value = torch.tensor([value], dtype=torch.float32)
+
+        return state, policy, value
+
+
+def play_game(model, config, device, iteration):
+    env = ChessEnv(device=device)
+    mcts = MCTS(model, config, device)
+
+    state = env.reset()
+    examples = []
+    move_count = 0
+
+    while not env.board.is_game_over() and move_count < config.MAX_GAME_LENGTH:
+        visit_counts = mcts.search(env, add_noise=True)
+
+        legal_moves = env.legal_moves()
+        policy = get_policy_from_visits(visit_counts, legal_moves)
+
+        examples.append((state.cpu().clone(), policy, None))
+
+        temperature = 1.0 if move_count < config.TEMP_THRESHOLD else 0.1
+        move = temperature_sample(visit_counts, temperature)
+
+        state, reward, done = env.step(move)
+        move_count += 1
+
+    final_result = reward
+
+    for i in range(len(examples)):
+        s, p, _ = examples[i]
+        moves_from_end = len(examples) - i - 1
+        value = final_result if moves_from_end % 2 == 0 else -final_result
+        examples[i] = (s, p, value)
+
+    save_pgn(env, path=config.GAMES_DIR, prefix="selfplay", iteration=iteration)
+
+    return examples
+
+
+def train_model(model, optimizer, dataset, config, device):
+    model.train()
+
+    dataloader = DataLoader(
+        dataset,
+        batch_size=config.BATCH_SIZE,
+        shuffle=True,
+        num_workers=config.NUM_WORKERS,
+        pin_memory=True
+    )
+
+    total_loss = 0
+    total_policy_loss = 0
+    total_value_loss = 0
+    num_batches = 0
+
+    for states, policies, values in dataloader:
+        states = states.to(device)
+        policies = policies.to(device)
+        values = values.to(device)
+
+        policy_logits, pred_values = model(states)
+
+        log_probs = torch.log_softmax(policy_logits, dim=1)
+        policy_loss = -torch.mean(torch.sum(policies * log_probs, dim=1))
+
+        value_loss = torch.mean((values.squeeze() - pred_values.squeeze()) ** 2)
+
+        loss = policy_loss + value_loss
+
+        optimizer.zero_grad()
+        loss.backward()
+
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
+
+        optimizer.step()
+
+        total_loss += loss.item()
+        total_policy_loss += policy_loss.item()
+        total_value_loss += value_loss.item()
+        num_batches += 1
+
+    return (
+        total_loss / num_batches,
+        total_policy_loss / num_batches,
+        total_value_loss / num_batches
+    )
+
+
+def validate_model(model, config, device):
+    model.eval()
+
+    wins = 0
+    total = config.NUM_VALIDATION_GAMES
+
+    for i in range(total):
+        env = ChessEnv(device=device)
+        mcts = MCTS(model, config, device)
+
+        state = env.reset()
+        move_count = 0
+
+        while not env.board.is_game_over() and move_count < config.MAX_GAME_LENGTH:
+            visit_counts = mcts.search(env, add_noise=False)
+
+            move = temperature_sample(visit_counts, temperature=0.1)
+
+            state, reward, done = env.step(move)
+            move_count += 1
+
+        if env.board.result() == '1-0':
+            wins += 1
+
+        if i == 0:
+            save_pgn(env, path="./validation", prefix="validation")
+
+    return wins / total
+
+
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    config = Config()
+
+    os.makedirs(config.LOG_DIR, exist_ok=True)
+    os.makedirs(config.MODEL_DIR, exist_ok=True)
+    os.makedirs(config.GAMES_DIR, exist_ok=True)
+
+    model = ChessNet().to(device)
+    print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
+
+    optimizer = optim.Adam(
+        model.parameters(),
+        lr=config.LEARNING_RATE,
+        weight_decay=config.WEIGHT_DECAY
+    )
+
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5)
+
+    replay_buffer = ReplayBuffer(max_size=config.REPLAY_BUFFER_SIZE)
+
+    writer = SummaryWriter(config.LOG_DIR)
+
+    best_val_win_rate = 0.0
+    patience_counter = 0
+
+    for iteration in range(1, config.NUM_ITERATIONS + 1):
+        print(f"\n{'='*60}")
+        print(f"Iteration {iteration}/{config.NUM_ITERATIONS}")
+        print(f"{'='*60}")
+
+        print(f"Playing {config.NUM_SELFPLAY_GAMES} self-play games...")
+        iteration_examples = []
+
+        for game_num in tqdm(range(config.NUM_SELFPLAY_GAMES), desc="Self-play"):
+            examples = play_game(model, config, device, iteration)
+            iteration_examples.extend(examples)
+
+        print(f"Generated {len(iteration_examples)} training examples")
+
+        replay_buffer.add(iteration_examples)
+        print(f"Replay buffer size: {len(replay_buffer)}")
+
+        if len(replay_buffer) < config.MIN_BUFFER_SIZE:
+            print(f"Waiting for more examples ({len(replay_buffer)}/{config.MIN_BUFFER_SIZE})")
+            continue
+
+        print("Training model...")
+        for epoch in range(config.TRAIN_EPOCHS):
+            train_examples = replay_buffer.get_all()
+            dataset = ChessDataset(train_examples)
+
+            loss, policy_loss, value_loss = train_model(
+                model, optimizer, dataset, config, device
+            )
+
+            print(f"  Epoch {epoch+1}/{config.TRAIN_EPOCHS}: "
+                  f"Loss={loss:.4f}, Policy={policy_loss:.4f}, Value={value_loss:.4f}")
+
+            global_step = iteration * config.TRAIN_EPOCHS + epoch
+            writer.add_scalar('Loss/total', loss, global_step)
+            writer.add_scalar('Loss/policy', policy_loss, global_step)
+            writer.add_scalar('Loss/value', value_loss, global_step)
+
+        scheduler.step()
+        current_lr = optimizer.param_groups[0]['lr']
+        writer.add_scalar('Learning_rate', current_lr, iteration)
+
+        if iteration % config.VALIDATION_INTERVAL == 0:
+            print("Validating...")
+            win_rate = validate_model(model, config, device)
+            print(f"Validation win rate: {win_rate:.2%}")
+
+            writer.add_scalar('Validation/win_rate', win_rate, iteration)
+
+            if win_rate > best_val_win_rate:
+                best_val_win_rate = win_rate
+                patience_counter = 0
+
+                torch.save(
+                    model.state_dict(),
+                    os.path.join(config.MODEL_DIR, 'best_model.pt')
+                )
+                print(f"New best model! Win rate: {win_rate:.2%}")
+            else:
+                patience_counter += 1
+                print(f"No improvement. Patience: {patience_counter}/{config.EARLY_STOPPING_PATIENCE}")
+
+            if patience_counter >= config.EARLY_STOPPING_PATIENCE:
+                print("Early stopping triggered!")
+                break
+
+        if iteration % config.SAVE_INTERVAL == 0:
+            checkpoint_path = os.path.join(
+                config.MODEL_DIR,
+                f'checkpoint_iter_{iteration}.pt'
+            )
+            torch.save({
+                'iteration': iteration,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'replay_buffer': replay_buffer,
+            }, checkpoint_path)
+            print(f"Saved checkpoint: {checkpoint_path}")
+
+    print("\nTraining complete!")
+    writer.close()
+
+
+if __name__ == '__main__':
+    main()
