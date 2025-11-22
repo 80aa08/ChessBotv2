@@ -21,6 +21,16 @@ class ResidualBlock(nn.Module):
 
 
 class ChessNet(nn.Module):
+    """
+    Neural network for chess position evaluation
+    Architecture inspired by AlphaZero
+
+    Input: (batch, 17, 8, 8) board representation
+    Output:
+        - policy_logits: (batch, 4672) move probabilities
+        - value: (batch, 1) position evaluation [-1, 1]
+    """
+
     def __init__(self):
         super().__init__()
 
@@ -68,11 +78,11 @@ class ChessNet(nn.Module):
             x = block(x)
 
         policy = F.relu(self.policy_bn(self.policy_conv(x)))
-        policy = policy.view(policy.size(0), -1)  
+        policy = policy.view(policy.size(0), -1)  # Flatten
         policy_logits = self.policy_fc(policy)
 
         value = F.relu(self.value_bn(self.value_conv(x)))
-        value = value.view(value.size(0), -1)  
+        value = value.view(value.size(0), -1)  # Flatten
         value = F.relu(self.value_fc1(value))
         value = torch.tanh(self.value_fc2(value))
 

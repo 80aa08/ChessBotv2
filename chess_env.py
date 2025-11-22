@@ -31,12 +31,20 @@ class ChessEnv:
             elif result == '0-1':
                 reward = -1 if self.board.turn == chess.BLACK else 1
             else:
-                reward = 0
+                reward = 0  # Draw
 
         return self._get_state(), reward, done
 
     def _get_state(self):
-
+        """
+        Encode board state as tensor:
+        - 12 planes for pieces (6 white, 6 black)
+        - 1 plane for current player color
+        - 2 planes for castling rights (current player, opponent)
+        - 1 plane for en passant
+        - 1 plane for move count (50-move rule)
+        Total: 17 channels
+        """
         planes = np.zeros((17, 8, 8), dtype=np.float32)
 
         for sq, piece in self.board.piece_map().items():
@@ -44,7 +52,7 @@ class ChessEnv:
             row, col = divmod(sq, 8)
             planes[idx, row, col] = 1
 
-        planes[12, :, :] = int(self.board.turn)  # 1 for white, 0 for black
+        planes[12, :, :] = int(self.board.turn)
 
         if self.board.turn == chess.WHITE:
             planes[13, :, :] = int(self.board.has_kingside_castling_rights(chess.WHITE))

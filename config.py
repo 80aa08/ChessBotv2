@@ -16,20 +16,20 @@ class Config:
     # Neural network training
     LEARNING_RATE = 2e-4            # Lower learning rate for stability
     WEIGHT_DECAY = 1e-4             # L2 regularization
-    BATCH_SIZE = 256                # Larger batch size
+    BATCH_SIZE = 64                 # Larger batch size
     TRAIN_EPOCHS = 3                # Number of epochs per training iteration
 
     # Network architecture
     INPUT_CHANNELS = 17             # Improved state representation
-    RESIDUAL_BLOCKS = 5             # More blocks for better performance
+    RESIDUAL_BLOCKS = 5            # More blocks for better performance
     CHANNELS = 128                  # Wider network
 
     # Self-play
-    NUM_SELFPLAY_GAMES = 25        # Games per iteration (increase for better learning)
+    NUM_SELFPLAY_GAMES = 20         # Games per iteration (increase for better learning)
     MAX_GAME_LENGTH = 200           # Maximum moves per game
 
     # Training iterations
-    NUM_ITERATIONS = 1000           # Total training iterations
+    NUM_ITERATIONS = 30             # Total training iterations
 
     # Replay buffer
     REPLAY_BUFFER_SIZE = 100000     # Keep last N game positions
@@ -47,7 +47,7 @@ class Config:
     LOG_DIR = "./logs"
     MODEL_DIR = "./models"
     GAMES_DIR = "./games"
-    SAVE_INTERVAL = 10              # Save model every N iterations
+    SAVE_INTERVAL = 2               # Save model every N iterations
     LOG_INTERVAL = 1                # Log to tensorboard every N iterations
 
     # GPU optimizations

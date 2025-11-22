@@ -1,3 +1,6 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,6 +10,7 @@ import os
 import numpy as np
 from tqdm import tqdm
 import chess
+import time
 
 from config import Config
 from model import ChessNet
@@ -18,6 +22,7 @@ from utils import (
     get_policy_from_visits,
     temperature_sample
 )
+from data_logger import DataLogger
 
 
 class ChessDataset(Dataset):
@@ -40,7 +45,7 @@ class ChessDataset(Dataset):
         return state, policy, value
 
 
-def play_game(model, config, device, iteration):
+def play_game(model, config, device, iteration, game_num=None, exp_games_dir=None):
     env = ChessEnv(device=device)
     mcts = MCTS(model, config, device)
 
@@ -63,7 +68,6 @@ def play_game(model, config, device, iteration):
         move_count += 1
 
     final_result = reward
-
     for i in range(len(examples)):
         s, p, _ = examples[i]
         moves_from_end = len(examples) - i - 1
@@ -71,6 +75,14 @@ def play_game(model, config, device, iteration):
         examples[i] = (s, p, value)
 
     save_pgn(env, path=config.GAMES_DIR, prefix="selfplay", iteration=iteration)
+
+    if exp_games_dir is not None:
+        if game_num is not None:
+            prefix = f"iter{iteration}-game{game_num}"
+        else:
+            prefix = f"iter{iteration}"
+
+        save_pgn(env, path=str(exp_games_dir), prefix=prefix, iteration=iteration)
 
     return examples
 
@@ -164,6 +176,19 @@ def main():
     os.makedirs(config.MODEL_DIR, exist_ok=True)
     os.makedirs(config.GAMES_DIR, exist_ok=True)
 
+    print("📊 Initializing logging systems...")
+
+    writer = SummaryWriter(config.LOG_DIR)
+
+    from metrics import MetricsTracker
+    metrics = MetricsTracker(log_dir=config.LOG_DIR)
+
+    logger = DataLogger(experiment_name="chess_training", base_dir="./experiments")
+
+    print(f"✅ Logs will be saved to:")
+    print(f"   - Tensorboard: {config.LOG_DIR}")
+    print(f"   - Experiments: {logger.exp_dir}")
+
     model = ChessNet().to(device)
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
@@ -177,8 +202,6 @@ def main():
 
     replay_buffer = ReplayBuffer(max_size=config.REPLAY_BUFFER_SIZE)
 
-    writer = SummaryWriter(config.LOG_DIR)
-
     best_val_win_rate = 0.0
     patience_counter = 0
 
@@ -187,12 +210,24 @@ def main():
         print(f"Iteration {iteration}/{config.NUM_ITERATIONS}")
         print(f"{'='*60}")
 
+        iteration_start_time = time.time()
+
         print(f"Playing {config.NUM_SELFPLAY_GAMES} self-play games...")
         iteration_examples = []
 
         for game_num in tqdm(range(config.NUM_SELFPLAY_GAMES), desc="Self-play"):
-            examples = play_game(model, config, device, iteration)
+            examples = play_game(model, config, device, iteration,game_num=game_num, exp_games_dir=logger.games_dir)
             iteration_examples.extend(examples)
+
+            if examples:
+                game_result = examples[-1][2]
+                logger.log_game(
+                    iteration=iteration,
+                    game_id=game_num,
+                    result=game_result,
+                    length=len(examples),
+                    opening="Unknown"
+                )
 
         print(f"Generated {len(iteration_examples)} training examples")
 
@@ -224,12 +259,43 @@ def main():
         current_lr = optimizer.param_groups[0]['lr']
         writer.add_scalar('Learning_rate', current_lr, iteration)
 
+        iteration_time = time.time() - iteration_start_time
+        avg_game_length = len(iteration_examples) / config.NUM_SELFPLAY_GAMES if config.NUM_SELFPLAY_GAMES > 0 else 0
+
+        iteration_data = {
+            'train_loss': loss,
+            'policy_loss': policy_loss,
+            'value_loss': value_loss,
+            'learning_rate': current_lr,
+            'num_games': config.NUM_SELFPLAY_GAMES,
+            'avg_game_length': avg_game_length,
+            'replay_buffer_size': len(replay_buffer),
+            'training_time_sec': iteration_time,
+            'avg_policy_entropy': 0,
+            'value_accuracy': 0
+        }
+
+        metrics.log_iteration(iteration, iteration_data)
+        logger.log_iteration(iteration, iteration_data)
+
+        print(f"⏱️  Iteration time: {iteration_time:.1f}s")
+
         if iteration % config.VALIDATION_INTERVAL == 0:
             print("Validating...")
             win_rate = validate_model(model, config, device)
             print(f"Validation win rate: {win_rate:.2%}")
 
             writer.add_scalar('Validation/win_rate', win_rate, iteration)
+
+            validation_results = {
+                'win_rate': win_rate,
+                'loss_rate': 1 - win_rate,
+                'draw_rate': 0,
+                'avg_game_length': 0,
+                'elo_estimate': 0,
+                'vs_random_win_rate': 0
+            }
+            logger.log_validation(iteration, validation_results)
 
             if win_rate > best_val_win_rate:
                 best_val_win_rate = win_rate
@@ -239,6 +305,13 @@ def main():
                     model.state_dict(),
                     os.path.join(config.MODEL_DIR, 'best_model.pt')
                 )
+
+                exp_best_path = logger.models_dir / f"best_model_iter_{iteration}.pt"
+                torch.save(
+                    model.state_dict(),
+                    exp_best_path
+                )
+
                 print(f"New best model! Win rate: {win_rate:.2%}")
             else:
                 patience_counter += 1
@@ -247,6 +320,11 @@ def main():
             if patience_counter >= config.EARLY_STOPPING_PATIENCE:
                 print("Early stopping triggered!")
                 break
+
+        if iteration % (config.VALIDATION_INTERVAL * 2) == 0:
+            print("📊 Generating plots...")
+            logger.generate_all_plots()
+            metrics.plot_training_progress()
 
         if iteration % config.SAVE_INTERVAL == 0:
             checkpoint_path = os.path.join(
@@ -263,6 +341,19 @@ def main():
             print(f"Saved checkpoint: {checkpoint_path}")
 
     print("\nTraining complete!")
+
+    print("\n📚 Exporting all data for thesis...")
+    logger.export_for_thesis()
+
+    print("\n" + "="*60)
+    print("✅ ALL DATA SAVED!")
+    print("="*60)
+    print(f"📁 Experiment directory: {logger.exp_dir}")
+    print(f"📊 Plots: {logger.plots_dir}")
+    print(f"📄 Data (CSV): {logger.data_dir}")
+    print(f"🎮 Games (PGN): {logger.games_dir}")
+    print("="*60)
+
     writer.close()
 
 

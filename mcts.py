@@ -6,7 +6,6 @@ from utils import move_to_index, get_legal_move_mask
 import chess
 
 class Node:
-    """Node in MCTS tree"""
     def __init__(self, prior):
         self.P = prior          # Prior probability from NN
         self.N = 0              # Visit count
@@ -18,7 +17,6 @@ class Node:
         return len(self.children) > 0
 
     def select_child(self, c_puct):
-        """Select child with highest UCB score"""
         total_N = sum(child.N for child in self.children.values())
 
         best_score = -float('inf')
@@ -26,6 +24,7 @@ class Node:
         best_child = None
 
         for move, child in self.children.items():
+            # UCB formula: Q + c_puct * P * sqrt(N_parent) / (1 + N_child)
             U = c_puct * child.P * math.sqrt(total_N) / (1 + child.N)
             score = child.Q + U
 
@@ -49,6 +48,8 @@ class Node:
 
 
 class MCTS:
+    """Monte Carlo Tree Search with Neural Network guidance"""
+
     def __init__(self, model, config, device):
         self.model = model
         self.config = config
@@ -100,8 +101,10 @@ class MCTS:
 
         env.step(move)
 
-        value = -self._simulate(env, child)
+        # Recurse
+        value = -self._simulate(env, child)  # Negate for opponent's perspective
 
+        # Backpropagate
         child.update(value)
 
         return value
@@ -131,11 +134,11 @@ class MCTS:
     def _get_game_result(self, env):
         result = env.board.result()
 
-        if result == '1-0':
+        if result == '1-0':  # White won
             return 1.0 if env.board.turn == chess.WHITE else -1.0
-        elif result == '0-1':
+        elif result == '0-1':  # Black won
             return -1.0 if env.board.turn == chess.WHITE else 1.0
-        else:
+        else:  # Draw
             return 0.0
 
 
@@ -146,5 +149,4 @@ class MCTSBatched(MCTS):
         self.eval_queue = []
 
     def search(self, env, add_noise=False):
-        """Run MCTS with batched evaluation"""
         return super().search(env, add_noise)
