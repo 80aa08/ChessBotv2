@@ -69,11 +69,11 @@ class MetricsTracker:
                 self.metrics = defaultdict(list, data.get('metrics', {}))
                 self.iteration_data = data.get('iterations', [])
             except:
-                print("Could not load existing metrics")
+                print("Nie można załadować metryk")
 
     def plot_training_progress(self, save=True):
         if not self.iteration_data:
-            print("No data to plot yet")
+            print("Brak danych")
             return
 
         iterations = [d['iteration'] for d in self.iteration_data]
@@ -149,13 +149,13 @@ class MetricsTracker:
         if save:
             filepath = os.path.join(self.plots_dir, 'training_progress.png')
             plt.savefig(filepath, dpi=150, bbox_inches='tight')
-            print(f"Saved training progress plot to {filepath}")
+            print(f"Zapisano wykres {filepath}")
 
         return fig
 
     def plot_game_outcomes(self, save=True):
         if 'games' not in self.metrics or not self.metrics['games']:
-            print("No game data available")
+            print("Brak danych")
             return
 
         games = self.metrics['games']
@@ -194,7 +194,7 @@ class MetricsTracker:
         if save:
             filepath = os.path.join(self.plots_dir, 'game_outcomes.png')
             plt.savefig(filepath, dpi=150, bbox_inches='tight')
-            print(f"Saved game outcomes plot to {filepath}")
+            print(f"Zapisano wykres {filepath}")
 
         return fig
 
@@ -203,7 +203,7 @@ class MetricsTracker:
 
     def generate_report(self):
         if not self.iteration_data:
-            return "No training data available yet."
+            return "Brak danych."
 
         latest = self.iteration_data[-1]
 
@@ -313,6 +313,6 @@ def create_comparison_plot(metrics_files, labels, save_path=None):
 
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"Saved comparison plot to {save_path}")
+        print(f"Zapisano wykres {save_path}")
 
     return fig

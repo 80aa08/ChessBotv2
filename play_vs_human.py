@@ -38,7 +38,7 @@ class ChessGame:
 
         print(f"👤 You are playing as: {human_color.upper()}")
         print(f"🤖 AI is playing as: {'BLACK' if human_color.lower() == 'white' else 'WHITE'}")
-    
+
     def display_board(self):
         letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
         board_str = str(self.env.board)
@@ -60,7 +60,6 @@ class ChessGame:
         if self.env.board.is_check():
             print("⚠️  CHECK!")
         print()
-        
 
     def get_human_move(self):
         legal_moves = list(self.env.board.legal_moves)
@@ -229,3 +228,4 @@ def quick_play(model_path="./models/best_model.pt", human_color="white", device=
 
 if __name__ == '__main__':
     SimpleCLI.main()
+1

@@ -107,16 +107,16 @@ def count_parameters(model):
 
 if __name__ == '__main__':
     model = ChessNet()
-    print(f"Model parameters: {count_parameters(model):,}")
+    print(f"Parametry modelu: {count_parameters(model):,}")
 
     batch_size = 4
     x = torch.randn(batch_size, Config.INPUT_CHANNELS, 8, 8)
     policy_logits, value = model(x)
 
-    print(f"Input shape: {x.shape}")
-    print(f"Policy logits shape: {policy_logits.shape}")
-    print(f"Value shape: {value.shape}")
-    print(f"Value range: [{value.min().item():.3f}, {value.max().item():.3f}]")
+    print(f"Kształt wejściowy: {x.shape}")
+    print(f"Kształt policy: {policy_logits.shape}")
+    print(f"Kształt value: {value.shape}")
+    print(f"Zasięg value: [{value.min().item():.3f}, {value.max().item():.3f}]")
 
     policy = F.softmax(policy_logits, dim=1)
-    print(f"Policy sum: {policy.sum(dim=1)}")
+    print(f"Suma policy: {policy.sum(dim=1)}")

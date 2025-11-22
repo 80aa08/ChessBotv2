@@ -31,7 +31,7 @@ class ModelEvaluator:
             move_count += 1
 
             if verbose and move_count % 10 == 0:
-                print(f"Move {move_count}")
+                print(f"Ruch {move_count}")
 
         result_str = env.board.result()
         if result_str == '1-0':
@@ -163,7 +163,7 @@ class ModelEvaluator:
         n = len(models)
         scores = np.zeros(n)  # Win = 1, Draw = 0.5, Loss = 0
 
-        print(f"Running tournament with {n} models...")
+        print(f"Uruchamianie zawodów {n} modeli...")
 
         for i in range(n):
             for j in range(i + 1, n):
@@ -199,7 +199,7 @@ class ModelEvaluator:
 
         results.sort(key=lambda x: x['score'], reverse=True)
 
-        print("\nTournament Results:")
+        print("\nWyniki:")
         print("-" * 50)
         for i, r in enumerate(results):
             print(f"{i + 1}. {r['name']}: {r['score']:.1f}/{r['games_played']}")
@@ -210,11 +210,11 @@ class ModelEvaluator:
 def test_model_strength(model, device='cpu'):
     evaluator = ModelEvaluator(device=device)
 
-    print("Testing model strength...")
+    print("Testowanie siły modelu...")
 
-    print("1. Playing against random moves...")
+    print("1. Zachowanie przeciwko losowym ruchom...")
     random_win_rate = evaluator.evaluate_vs_random(model, num_games=10)
-    print(f"   Win rate vs random: {random_win_rate:.1%}")
+    print(f"   Wskaźnik zwycięstw vs losowy: {random_win_rate:.1%}")
 
     results = {
         'random_win_rate': random_win_rate,
@@ -236,4 +236,4 @@ if __name__ == '__main__':
     evaluator = ModelEvaluator(device=device)
 
     random_wr = evaluator.evaluate_vs_random(model, num_games=20)
-    print(f"Win rate vs random: {random_wr:.1%}")
+    print(f"Wskażnik zwycięstw: {random_wr:.1%}")

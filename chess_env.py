@@ -16,7 +16,7 @@ class ChessEnv:
 
     def step(self, move):
         if move not in self.board.legal_moves:
-            raise ValueError(f"Illegal move: {move}")
+            raise ValueError(f"Nielegalny ruch: {move}")
 
         self.board.push(move)
         self.move_history.append(move)

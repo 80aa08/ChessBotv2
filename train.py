@@ -166,11 +166,14 @@ def validate_model(model, config, device):
     return wins / total
 
 
-def main():
+def main(config=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    config = Config()
+    if not config:
+        config = Config()
+
+
 
     os.makedirs(config.LOG_DIR, exist_ok=True)
     os.makedirs(config.MODEL_DIR, exist_ok=True)
@@ -183,7 +186,9 @@ def main():
     from metrics import MetricsTracker
     metrics = MetricsTracker(log_dir=config.LOG_DIR)
 
-    logger = DataLogger(experiment_name="chess_training", base_dir="./experiments")
+
+    experiment_name = getattr(config, "EXPERIMENT_NAME", "chess_training")
+    logger = DataLogger(experiment_name=experiment_name, base_dir="./experiments")
 
     print(f"✅ Logs will be saved to:")
     print(f"   - Tensorboard: {config.LOG_DIR}")

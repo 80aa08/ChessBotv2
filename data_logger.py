@@ -81,7 +81,7 @@ class DataLogger:
         data['timestamp'] = timestamp
         self.iterations_data.append(data)
 
-        print(f"📊 Iteration {iteration} logged")
+        print(f"📊 Iteracja {iteration} zapisana")
 
     def log_game(self, iteration, game_id, result, length, opening="Unknown"):
         with open(self.game_log, 'a', newline='') as f:
@@ -127,10 +127,10 @@ class DataLogger:
         self.validation_data.append(results)
 
     def generate_all_plots(self):
-        print("📈 Generating plots for thesis...")
+        print("📈 Generowanie wykresów...")
 
         if not self.iterations_data:
-            print("⚠️ No data to plot yet")
+            print("⚠️ Brak danych")
             return
 
         sns.set_style("whitegrid")
@@ -144,7 +144,7 @@ class DataLogger:
         self._plot_validation_metrics()
         self._plot_combined_overview()
 
-        print(f"✅ All plots saved to: {self.plots_dir}")
+        print(f"✅ Wszystkie zapisane: {self.plots_dir}")
 
     def _plot_training_losses(self):
         iterations = [d['iteration'] for d in self.iterations_data]
@@ -360,11 +360,11 @@ class DataLogger:
         with open(self.summary_file, 'w') as f:
             json.dump(summary, f, indent=2)
 
-        print(f"💾 Summary saved to: {self.summary_file}")
+        print(f"💾 Podsumowanie zapisane: {self.summary_file}")
         return summary
 
     def export_for_thesis(self):
-        print("📚 Exporting data for thesis...")
+        print("📚 Export danych...")
 
         self.generate_all_plots()
 
@@ -386,7 +386,7 @@ class DataLogger:
             f.write(f"## Plots\n\n")
             f.write(f"All plots available in `plots/` directory in PNG (300 DPI) and PDF formats.\n")
 
-        print(f"✅ Thesis export complete!")
-        print(f"📁 All files in: {self.exp_dir}")
-        print(f"📊 Plots: {self.plots_dir}")
-        print(f"📄 Data: {self.data_dir}")
+        print(f"✅ Export ukończony!")
+        print(f"📁 Wszystkie pliki w: {self.exp_dir}")
+        print(f"📊 Wykresy: {self.plots_dir}")
+        print(f"📄 Dane: {self.data_dir}")

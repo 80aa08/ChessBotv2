@@ -17,7 +17,7 @@ class Config:
     LEARNING_RATE = 2e-4            # Lower learning rate for stability
     WEIGHT_DECAY = 1e-4             # L2 regularization
     BATCH_SIZE = 64                 # Larger batch size
-    TRAIN_EPOCHS = 3                # Number of epochs per training iteration
+    TRAIN_EPOCHS = 1                # Number of epochs per training iteration
 
     # Network architecture
     INPUT_CHANNELS = 17             # Improved state representation
@@ -25,19 +25,19 @@ class Config:
     CHANNELS = 128                  # Wider network
 
     # Self-play
-    NUM_SELFPLAY_GAMES = 20         # Games per iteration (increase for better learning)
+    NUM_SELFPLAY_GAMES = 5         # Games per iteration (increase for better learning)
     MAX_GAME_LENGTH = 200           # Maximum moves per game
 
     # Training iterations
-    NUM_ITERATIONS = 30             # Total training iterations
+    NUM_ITERATIONS = 2             # Total training iterations
 
     # Replay buffer
     REPLAY_BUFFER_SIZE = 100000     # Keep last N game positions
-    MIN_BUFFER_SIZE = 10000         # Start training after collecting this many examples
+    MIN_BUFFER_SIZE = 500           # Start training after collecting this many examples
 
     # Validation (early stopping)
-    NUM_VALIDATION_GAMES = 20       # More games for better validation
-    VALIDATION_INTERVAL = 5         # Validate every N iterations
+    NUM_VALIDATION_GAMES = 5       # More games for better validation
+    VALIDATION_INTERVAL = 2         # Validate every N iterations
     EARLY_STOPPING_PATIENCE = 20    # Stop if no improvement for N validations
 
     # Data augmentation (board symmetries)
@@ -60,4 +60,4 @@ class Config:
     # Total: 4672 possible moves
     POLICY_OUTPUT_SIZE = 4672
 
-    # EXPERIMENT_NAME = "ches"
+    EXPERIMENT_NAME = "demo"
