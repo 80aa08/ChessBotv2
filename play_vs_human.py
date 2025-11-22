@@ -38,16 +38,29 @@ class ChessGame:
 
         print(f"👤 You are playing as: {human_color.upper()}")
         print(f"🤖 AI is playing as: {'BLACK' if human_color.lower() == 'white' else 'WHITE'}")
-
+    
     def display_board(self):
-        print("\n" + "="*50)
-        print(self.env.board)
-        print("="*50)
+        letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+        board_str = str(self.env.board)
+        rows = board_str.split("\n")
+
+        print("\n" + "=" * 50)
+        print()
+
+        print("   " + " ".join(letters))
+
+        for rank, row in zip(range(8, 0, -1), rows):
+            print(f"{rank}  {row}")
+
+        print("   " + " ".join(letters))
+
+        print("=" * 50)
         print(f"Move: {self.env.board.fullmove_number}")
         print(f"Turn: {'WHITE' if self.env.board.turn == chess.WHITE else 'BLACK'}")
         if self.env.board.is_check():
             print("⚠️  CHECK!")
         print()
+        
 
     def get_human_move(self):
         legal_moves = list(self.env.board.legal_moves)
