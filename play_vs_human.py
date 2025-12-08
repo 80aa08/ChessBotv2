@@ -228,4 +228,3 @@ def quick_play(model_path="./models/best_model.pt", human_color="white", device=
 
 if __name__ == '__main__':
     SimpleCLI.main()
-1
