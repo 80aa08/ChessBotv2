@@ -220,7 +220,7 @@ def main_menu():
         Wybierz demo:
 
         1. 🔥 Pełny Pipeline (wszystkie kroki)
-        2. ⏱️  Mini Trening (5 iteracji)
+        2. ⏱️  Mini Trening (2 iteracji)
         3. 📊 Generowanie Wykresów
         4. 🎮 Gra przeciwko AI
         5. 📈 Ewaluacja Modelu

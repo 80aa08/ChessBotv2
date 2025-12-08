@@ -29,7 +29,7 @@ class Config:
     MAX_GAME_LENGTH = 200           # Maximum moves per game
 
     # Training iterations
-    NUM_ITERATIONS = 30             # Total training iterations
+    NUM_ITERATIONS = 4             # Total training iterations
 
     # Replay buffer
     REPLAY_BUFFER_SIZE = 100000     # Keep last N game positions
@@ -61,3 +61,8 @@ class Config:
     POLICY_OUTPUT_SIZE = 4672
 
     # EXPERIMENT_NAME = "ches"
+
+    INIT_MODEL_PATH="./models/best_model.pt"
+
+    ARENA_GAMES = 20
+    ARENA_THRESHOLD = 0.55

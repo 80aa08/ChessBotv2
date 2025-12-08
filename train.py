@@ -1,4 +1,5 @@
 import os
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 import torch
@@ -23,6 +24,8 @@ from utils import (
     temperature_sample
 )
 from data_logger import DataLogger
+from arena import Arena
+import copy
 
 
 class ChessDataset(Dataset):
@@ -173,8 +176,6 @@ def main(config=None):
     if not config:
         config = Config()
 
-
-
     os.makedirs(config.LOG_DIR, exist_ok=True)
     os.makedirs(config.MODEL_DIR, exist_ok=True)
     os.makedirs(config.GAMES_DIR, exist_ok=True)
@@ -186,7 +187,6 @@ def main(config=None):
     from metrics import MetricsTracker
     metrics = MetricsTracker(log_dir=config.LOG_DIR)
 
-
     experiment_name = getattr(config, "EXPERIMENT_NAME", "chess_training")
     logger = DataLogger(experiment_name=experiment_name, base_dir="./experiments")
 
@@ -194,7 +194,28 @@ def main(config=None):
     print(f"   - Tensorboard: {config.LOG_DIR}")
     print(f"   - Experiments: {logger.exp_dir}")
 
+    init_model_path = getattr(config, "INIT_MODEL_PATH", "").strip()
+
     model = ChessNet().to(device)
+
+    best_model = None
+    arena = Arena(device=device)
+
+    if os.path.isfile(init_model_path):
+        print(f"🧠 Ładuję istniejący best model z: {init_model_path}")
+        best_model = ChessNet().to(device)
+        best_model.load_state_dict(torch.load(init_model_path, map_location=device))
+    else:
+        print("ℹ️ Brak zapisanego best_model.pt – zostanie ustawiony przy pierwszej walidacji.")
+
+    if init_model_path:
+        if os.path.isfile(init_model_path):
+            try:
+                model.load_state_dict(torch.load(init_model_path, map_location=device))
+                print(f"Załadowano model {init_model_path}")
+            except FileNotFoundError:
+                pass
+
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     optimizer = optim.Adam(
@@ -211,9 +232,9 @@ def main(config=None):
     patience_counter = 0
 
     for iteration in range(1, config.NUM_ITERATIONS + 1):
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Iteration {iteration}/{config.NUM_ITERATIONS}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         iteration_start_time = time.time()
 
@@ -221,7 +242,7 @@ def main(config=None):
         iteration_examples = []
 
         for game_num in tqdm(range(config.NUM_SELFPLAY_GAMES), desc="Self-play"):
-            examples = play_game(model, config, device, iteration,game_num=game_num, exp_games_dir=logger.games_dir)
+            examples = play_game(model, config, device, iteration, game_num=game_num, exp_games_dir=logger.games_dir)
             iteration_examples.extend(examples)
 
             if examples:
@@ -252,7 +273,7 @@ def main(config=None):
                 model, optimizer, dataset, config, device
             )
 
-            print(f"  Epoch {epoch+1}/{config.TRAIN_EPOCHS}: "
+            print(f"  Epoch {epoch + 1}/{config.TRAIN_EPOCHS}: "
                   f"Loss={loss:.4f}, Policy={policy_loss:.4f}, Value={value_loss:.4f}")
 
             global_step = iteration * config.TRAIN_EPOCHS + epoch
@@ -286,45 +307,54 @@ def main(config=None):
         print(f"⏱️  Iteration time: {iteration_time:.1f}s")
 
         if iteration % config.VALIDATION_INTERVAL == 0:
-            print("Validating...")
-            win_rate = validate_model(model, config, device)
-            print(f"Validation win rate: {win_rate:.2%}")
+            print("\n=== VALIDATION (ARENA) ===")
 
-            writer.add_scalar('Validation/win_rate', win_rate, iteration)
-
-            validation_results = {
-                'win_rate': win_rate,
-                'loss_rate': 1 - win_rate,
-                'draw_rate': 0,
-                'avg_game_length': 0,
-                'elo_estimate': 0,
-                'vs_random_win_rate': 0
-            }
-            logger.log_validation(iteration, validation_results)
-
-            if win_rate > best_val_win_rate:
-                best_val_win_rate = win_rate
-                patience_counter = 0
-
+            if best_model is None:
+                print("⚠️  Brak best_model – ustawiam aktualny model jako bazowy.")
+                best_model = copy.deepcopy(model)
                 torch.save(
-                    model.state_dict(),
-                    os.path.join(config.MODEL_DIR, 'best_model.pt')
+                    best_model.state_dict(),
+                    os.path.join(config.MODEL_DIR, "best_model.pt")
                 )
-
-                exp_best_path = logger.models_dir / f"best_model_iter_{iteration}.pt"
-                torch.save(
-                    model.state_dict(),
-                    exp_best_path
-                )
-
-                print(f"New best model! Win rate: {win_rate:.2%}")
             else:
-                patience_counter += 1
-                print(f"No improvement. Patience: {patience_counter}/{config.EARLY_STOPPING_PATIENCE}")
+                arena_results = arena.compare_models(
+                    new_model=model,
+                    best_model=best_model,
+                    config=config,
+                    num_games=config.ARENA_GAMES,
+                    save_path=str(logger.games_dir)
+                )
 
-            if patience_counter >= config.EARLY_STOPPING_PATIENCE:
-                print("Early stopping triggered!")
-                break
+                new_win_rate = arena_results["win_rate"]
+
+                validation_results = {
+                    "win_rate": new_win_rate,
+                    "loss_rate": 1.0 - new_win_rate,
+                    "draw_rate": arena_results["draws"] / arena_results["total_games"],
+                    "avg_game_length": 0,
+                    "elo_estimate": 0,
+                    "vs_random_win_rate": 0
+                }
+                logger.log_validation(iteration, validation_results)
+
+                print(f"\nArena win rate (current vs best): {new_win_rate:.1%}")
+
+                if new_win_rate >= config.ARENA_THRESHOLD:
+                    print("✅ New model beat best model – updating best_model.pt")
+                    best_model = copy.deepcopy(model)
+                    patience_counter = 0
+
+                    torch.save(
+                        best_model.state_dict(),
+                        os.path.join(config.MODEL_DIR, "best_model.pt")
+                    )
+                else:
+                    print("❌ Keeping previous best model")
+                    patience_counter += 1
+                    print(f"Patience: {patience_counter}/{config.EARLY_STOPPING_PATIENCE}")
+                    if patience_counter >= config.EARLY_STOPPING_PATIENCE:
+                        print("⛔ Early stopping triggered (no arena improvement).")
+                        break
 
         if iteration % (config.VALIDATION_INTERVAL * 2) == 0:
             print("📊 Generating plots...")
@@ -350,14 +380,14 @@ def main(config=None):
     print("\n📚 Exporting all data for thesis...")
     logger.export_for_thesis()
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("✅ ALL DATA SAVED!")
-    print("="*60)
+    print("=" * 60)
     print(f"📁 Experiment directory: {logger.exp_dir}")
     print(f"📊 Plots: {logger.plots_dir}")
     print(f"📄 Data (CSV): {logger.data_dir}")
     print(f"🎮 Games (PGN): {logger.games_dir}")
-    print("="*60)
+    print("=" * 60)
 
     writer.close()
 
